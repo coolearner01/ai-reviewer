@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * GitHub-dark inspired theme. Tokens mirror the reference mockup in
+ * files/pr_reviewer_frontend_prompt.html so the app, sidebar, panels, and
+ * components share one cohesive look.
+ */
+@layer base {
+  :root {
+    /* Raw palette */
+    --gh-canvas: 215 28% 7%;        /* #0d1117 */
+    --gh-surface: 213 18% 12%;       /* #161b22 */
+    --gh-surface-2: 215 24% 9%;      /* #11161d */
+    --gh-sidebar: 220 41% 2%;        /* #010409 */
+    --gh-border: 213 12% 21%;        /* #30363d */
+    --gh-border-muted: 215 14% 14%;  /* #21262d */
+    --gh-text: 213 25% 93%;          /* #e6edf3 */
+    --gh-text-muted: 215 8% 58%;     /* #8b949e */
+    --gh-text-subtle: 215 6% 47%;    /* #6e7681 */
+    --gh-accent: 137 60% 33%;        /* #238636 */
+    --gh-accent-hover: 137 65% 30%;  /* #1a7f37 */
+    --gh-blue: 212 84% 52%;          /* #1f6feb */
+    --gh-blue-muted: 212 92% 61%;    /* #388bfd */
+    --gh-red: 0 70% 53%;             /* #da3633 */
+    --gh-yellow: 41 78% 48%;         /* #d29922 */
+    --gh-purple: 263 70% 62%;        /* #8957e5 */
+    --gh-orange: 28 86% 59%;         /* #f0883e */
+
+    /* shadcn-style semantic aliases mapped to the dark palette */
+    --background: var(--gh-canvas);
+    --foreground: var(--gh-text);
+    --card: var(--gh-surface);
+    --card-foreground: var(--gh-text);
+    --popover: var(--gh-surface);
+    --popover-foreground: var(--gh-text);
+    --primary: var(--gh-accent);
+    --primary-foreground: 0 0% 100%;
+    --secondary: var(--gh-surface);
+    --secondary-foreground: var(--gh-text);
+    --muted: var(--gh-border-muted);
+    --muted-foreground: var(--gh-text-muted);
+    --accent: 213 100% 8%;
+    --accent-foreground: var(--gh-blue-muted);
+    --destructive: var(--gh-red);
+    --destructive-foreground: 0 0% 100%;
+    --border: var(--gh-border);
+    --input: var(--gh-border);
+    --ring: var(--gh-blue);
+    --radius: 6px;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    @apply bg-gh-canvas text-gh-text antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Noto Sans',
+      Helvetica, Arial, sans-serif;
+  }
+
+  /* Subtle scrollbars for the dark surface */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--gh-border));
+    border-radius: 8px;
+    border: 2px solid hsl(var(--gh-canvas));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--gh-text-subtle));
+  }
+}
+
+@layer components {
+  /* Reusable pills that match the reference mockup */
+  .gh-status-pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-[2px] text-[11px] font-medium;
+  }
+  .gh-status-pill--open {
+    background: rgb(35 134 54 / 0.18);
+    color: #3fb950;
+    border: 1px solid #238636;
+  }
+  .gh-status-pill--merged {
+    background: rgb(137 87 229 / 0.18);
+    color: #a371f7;
+    border: 1px solid #8957e5;
+  }
+  .gh-status-pill--closed {
+    background: rgb(218 54 51 / 0.18);
+    color: #f85149;
+    border: 1px solid #da3633;
+  }
+
+  .gh-review-badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-medium;
+  }
+  .gh-review-badge--approved {
+    background: rgb(35 134 54 / 0.18);
+    color: #3fb950;
+  }
+  .gh-review-badge--changes {
+    background: rgb(210 153 34 / 0.18);
+    color: #e3b341;
+  }
+  .gh-review-badge--pending {
+    background: rgb(31 111 235 / 0.18);
+    color: #58a6ff;
+  }
+  .gh-review-badge--none {
+    background: hsl(var(--gh-border-muted));
+    color: hsl(var(--gh-text-subtle));
+  }
+}

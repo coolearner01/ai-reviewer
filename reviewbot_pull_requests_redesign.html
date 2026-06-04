@@ -1,0 +1,333 @@
+
+<h2 class="sr-only">ReviewBot pull requests dashboard for decentro-hub repository</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.shell{display:flex;background:#111;min-height:700px;font-family:var(--font-sans);font-size:13px}
+.sidebar{width:220px;flex-shrink:0;background:#161616;border-right:1px solid #222;display:flex;flex-direction:column}
+.sb-logo{padding:16px 16px 12px;display:flex;align-items:center;gap:9px;border-bottom:1px solid #222}
+.sb-logo-icon{width:28px;height:28px;background:#1a3a1a;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#4ade80;font-size:15px}
+.sb-logo-name{font-size:14px;font-weight:500;color:#e8e8e8}
+.sb-org{margin:8px 10px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:7px;padding:7px 10px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.sb-org-name{font-size:12px;color:#ccc;display:flex;align-items:center;gap:7px}
+.sb-org-avatar{width:18px;height:18px;border-radius:4px;background:#2a3a2a;display:flex;align-items:center;justify-content:center;font-size:9px;color:#4ade80;font-weight:500}
+.sb-sim{margin:0 10px 12px;background:#1a2a1a;border:1px solid #2a3a2a;border-radius:7px;padding:7px 10px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:#6ddf8a;font-size:12px}
+.sb-section{padding:12px 10px 4px;font-size:10px;letter-spacing:.8px;color:#555;font-weight:500;text-transform:uppercase}
+.sb-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;margin:1px 6px;cursor:pointer;color:#999;font-size:13px;transition:background .12s}
+.sb-item:hover{background:#1e1e1e;color:#ddd}
+.sb-item.active{background:#1c2c3a;color:#7ab8f5}
+.sb-item i{font-size:16px}
+.sb-badge{margin-left:auto;background:#1e3a1e;color:#4ade80;font-size:10px;padding:1px 6px;border-radius:20px;font-weight:500}
+.sb-badge.blue{background:#1a2e44;color:#7ab8f5}
+.sb-repos{margin-top:4px}
+.sb-repo{display:flex;align-items:center;gap:8px;padding:6px 10px;margin:1px 6px;border-radius:7px;cursor:pointer;color:#888;font-size:12px}
+.sb-repo:hover{background:#1e1e1e;color:#ccc}
+.sb-repo-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sb-repo-dot.green{background:#4ade80}
+.sb-repo-dot.yellow{background:#facc15}
+.sb-add{display:flex;align-items:center;gap:6px;padding:6px 10px;margin:1px 6px;color:#555;font-size:12px;cursor:pointer}
+.sb-add:hover{color:#888}
+.sb-user{margin-top:auto;padding:12px 10px;border-top:1px solid #1e1e1e;display:flex;align-items:center;gap:9px}
+.sb-avatar{width:28px;height:28px;border-radius:50%;background:#2a3a4a;display:flex;align-items:center;justify-content:center;font-size:11px;color:#7ab8f5;font-weight:500}
+.sb-username{font-size:12px;color:#aaa}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{padding:12px 20px;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;justify-content:space-between}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:13px;color:#666}
+.breadcrumb a{color:#7ab8f5;cursor:pointer}
+.breadcrumb span{color:#444}
+.topbar-actions{display:flex;gap:8px}
+.btn-ghost{background:#1e1e1e;border:1px solid #2a2a2a;border-radius:7px;padding:5px 12px;color:#aaa;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px}
+.btn-ghost:hover{border-color:#444;color:#ddd}
+.btn-green{background:#1a3a1a;border:1px solid #2a4a2a;border-radius:7px;padding:5px 12px;color:#4ade80;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;font-weight:500}
+.btn-green:hover{background:#1e441e}
+.content{padding:20px}
+.repo-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.repo-pill{display:flex;align-items:center;gap:7px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:8px;padding:6px 12px;font-size:13px;color:#ccc;cursor:pointer}
+.repo-pill i{font-size:14px;color:#666}
+.repo-link{font-size:12px;color:#7ab8f5;display:flex;align-items:center;gap:4px}
+.tabs-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.tab-group{display:flex;gap:4px;background:#1a1a1a;border:1px solid #222;border-radius:8px;padding:3px}
+.tab{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;font-size:12px;color:#777;cursor:pointer;transition:all .15s}
+.tab.active{background:#1c2c3a;color:#7ab8f5}
+.tab:hover:not(.active){color:#bbb}
+.tab-count{background:#252525;color:#888;font-size:10px;padding:1px 6px;border-radius:20px}
+.tab.active .tab-count{background:#1a3a5a;color:#7ab8f5}
+.sync-btn{display:flex;align-items:center;gap:5px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:7px;padding:5px 12px;color:#888;font-size:12px;cursor:pointer}
+.sync-btn:hover{color:#ccc;border-color:#444}
+.search-row{display:flex;gap:8px;margin-bottom:12px}
+.search-wrap{flex:1;position:relative;display:flex;align-items:center}
+.search-wrap i{position:absolute;left:10px;color:#555;font-size:15px;pointer-events:none}
+.search-input{width:100%;background:#1a1a1a;border:1px solid #252525;border-radius:8px;padding:7px 12px 7px 32px;font-size:13px;color:#ccc;outline:none;transition:border-color .15s}
+.search-input:focus{border-color:#2a4a6a}
+.search-input::placeholder{color:#444}
+.filter-btn{background:#1a1a1a;border:1px solid #252525;border-radius:8px;padding:7px 12px;color:#888;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.filter-btn:hover{border-color:#3a3a3a;color:#ccc}
+.table-wrap{background:#161616;border:1px solid #1e1e1e;border-radius:10px;overflow:hidden}
+.table-head{display:grid;grid-template-columns:1fr 180px 130px 80px;padding:8px 16px;border-bottom:1px solid #1e1e1e;background:#141414}
+.th{font-size:10px;letter-spacing:.6px;color:#444;text-transform:uppercase;font-weight:500}
+.pr-row{display:grid;grid-template-columns:1fr 180px 130px 80px;padding:12px 16px;border-bottom:1px solid #1a1a1a;align-items:center;cursor:pointer;transition:background .1s}
+.pr-row:last-child{border-bottom:none}
+.pr-row:hover{background:#1a1a1a}
+.pr-title-area{display:flex;flex-direction:column;gap:4px;min-width:0}
+.pr-title-row{display:flex;align-items:center;gap:8px}
+.badge-open{background:#1a3a1a;color:#4ade80;border:1px solid #2a4a2a;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;flex-shrink:0;display:flex;align-items:center;gap:3px}
+.pr-name{font-size:13px;color:#d0d0d0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr-meta{font-size:11px;color:#555;display:flex;align-items:center;gap:4px}
+.pr-meta a{color:#7ab8f5}
+.branch-cell{font-size:11px;color:#666;font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.branch-arrow{color:#3a3a3a;margin:0 3px}
+.review-badge{display:inline-flex;align-items:center;gap:4px;background:#1a2535;color:#5a8fd5;border:1px solid #1e3a5a;font-size:11px;padding:3px 9px;border-radius:20px}
+.review-badge i{font-size:12px}
+.updated-cell{font-size:12px;color:#555;text-align:right}
+</style>
+
+<div class="shell">
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon"><i class="ti ti-git-pull-request" aria-hidden="true"></i></div>
+      <span class="sb-logo-name">ReviewBot</span>
+    </div>
+    <div class="sb-org">
+      <div class="sb-org-name">
+        <div class="sb-org-avatar">A</div>
+        anurag's-org
+      </div>
+      <i class="ti ti-chevron-down" style="font-size:13px;color:#555" aria-hidden="true"></i>
+    </div>
+    <div class="sb-sim"><i class="ti ti-player-play" style="font-size:13px" aria-hidden="true"></i> Simulate PR</div>
+
+    <div class="sb-section">Overview</div>
+    <div class="sb-item active">
+      <i class="ti ti-git-pull-request" aria-hidden="true"></i> Pull requests
+      <span class="sb-badge">13</span>
+    </div>
+    <div class="sb-item">
+      <i class="ti ti-robot" aria-hidden="true"></i> AI reviews
+    </div>
+    <div class="sb-item">
+      <i class="ti ti-chart-bar" aria-hidden="true"></i> Insights
+    </div>
+
+    <div class="sb-section">Organization</div>
+    <div class="sb-item">
+      <i class="ti ti-settings" aria-hidden="true"></i> Settings
+    </div>
+    <div class="sb-item">
+      <i class="ti ti-webhook" aria-hidden="true"></i> Webhooks
+    </div>
+    <div class="sb-item">
+      <i class="ti ti-building" aria-hidden="true"></i> Organizations
+    </div>
+
+    <div class="sb-section">Repositories</div>
+    <div class="sb-repos">
+      <div class="sb-repo">
+        <div class="sb-repo-dot yellow"></div>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">decentro-website-v2</span>
+        <span style="font-size:10px;color:#666">1</span>
+      </div>
+      <div class="sb-repo" style="color:#ccc">
+        <div class="sb-repo-dot green"></div>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">decentro-hub</span>
+        <span style="font-size:10px;color:#4ade80">12</span>
+      </div>
+      <div class="sb-add"><i class="ti ti-plus" style="font-size:13px" aria-hidden="true"></i> Add repository</div>
+    </div>
+
+    <div class="sb-user">
+      <div class="sb-avatar">AN</div>
+      <div>
+        <div class="sb-username">anurag singh</div>
+      </div>
+      <i class="ti ti-logout" style="font-size:15px;color:#444;margin-left:auto" aria-hidden="true"></i>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="breadcrumb">
+        <a>anurag's-org</a>
+        <span>/</span>
+        <span style="color:#888">Pull requests</span>
+        <span>/</span>
+        <span style="color:#ccc">decentro-hub</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-ghost"><i class="ti ti-filter" style="font-size:13px" aria-hidden="true"></i> Filter</button>
+        <button class="btn-green"><i class="ti ti-plus" style="font-size:13px" aria-hidden="true"></i> New org</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="repo-header">
+        <div class="repo-pill">
+          <i class="ti ti-git-branch" aria-hidden="true"></i>
+          decentrotech / decentro-hub
+          <i class="ti ti-chevron-down" style="font-size:12px;color:#555" aria-hidden="true"></i>
+        </div>
+        <a class="repo-link" href="https://bitbucket.org/decentrotech/decentro-hub">
+          <i class="ti ti-external-link" style="font-size:13px" aria-hidden="true"></i>
+          bitbucket.org/decentrotech/decentro-hub
+        </a>
+      </div>
+
+      <div class="tabs-row">
+        <div class="tab-group">
+          <div class="tab active">
+            <i class="ti ti-git-pull-request" style="font-size:13px" aria-hidden="true"></i>
+            Open <span class="tab-count">12</span>
+          </div>
+          <div class="tab">
+            <i class="ti ti-git-merge" style="font-size:13px" aria-hidden="true"></i>
+            Merged <span class="tab-count">53</span>
+          </div>
+          <div class="tab">
+            <i class="ti ti-x" style="font-size:13px" aria-hidden="true"></i>
+            Closed <span class="tab-count">1</span>
+          </div>
+        </div>
+        <button class="sync-btn"><i class="ti ti-refresh" style="font-size:13px" aria-hidden="true"></i> Sync</button>
+      </div>
+
+      <div class="search-row">
+        <div class="search-wrap">
+          <i class="ti ti-search" aria-hidden="true"></i>
+          <input class="search-input" type="text" placeholder="Search by title, author, branch or #number…" id="search-pr">
+        </div>
+        <button class="filter-btn"><i class="ti ti-user" style="font-size:13px" aria-hidden="true"></i> Author <i class="ti ti-chevron-down" style="font-size:12px" aria-hidden="true"></i></button>
+        <button class="filter-btn"><i class="ti ti-tag" style="font-size:13px" aria-hidden="true"></i> Label <i class="ti ti-chevron-down" style="font-size:12px" aria-hidden="true"></i></button>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-head">
+          <div class="th">Pull request</div>
+          <div class="th">Branches</div>
+          <div class="th">AI review</div>
+          <div class="th" style="text-align:right">Updated</div>
+        </div>
+
+        <div id="pr-list">
+          <div class="pr-row">
+            <div class="pr-title-area">
+              <div class="pr-title-row">
+                <span class="badge-open"><i class="ti ti-git-pull-request" style="font-size:10px" aria-hidden="true"></i> Open</span>
+                <span class="pr-name">addition-of-unload-funds[new]</span>
+              </div>
+              <div class="pr-meta">#66 · opened about 1 hour ago by <a>Rohan Kumar</a></div>
+            </div>
+            <div class="branch-cell">unload-funds <span class="branch-arrow">→</span> m…</div>
+            <div><span class="review-badge"><i class="ti ti-clock" aria-hidden="true"></i> Pending</span></div>
+            <div class="updated-cell">1 hour</div>
+          </div>
+          <div class="pr-row">
+            <div class="pr-title-area">
+              <div class="pr-title-row">
+                <span class="badge-open"><i class="ti ti-git-pull-request" style="font-size:10px" aria-hidden="true"></i> Open</span>
+                <span class="pr-name">add : rbac retrigger</span>
+              </div>
+              <div class="pr-meta">#20 · opened 1 day ago by <a>Anurag Singh Bisen</a></div>
+            </div>
+            <div class="branch-cell">feat/FEN-386-rba… <span class="branch-arrow">→</span> m…</div>
+            <div><span class="review-badge"><i class="ti ti-clock" aria-hidden="true"></i> Pending</span></div>
+            <div class="updated-cell">1 day</div>
+          </div>
+          <div class="pr-row">
+            <div class="pr-title-area">
+              <div class="pr-title-row">
+                <span class="badge-open"><i class="ti ti-git-pull-request" style="font-size:10px" aria-hidden="true"></i> Open</span>
+                <span class="pr-name">add: frontend</span>
+              </div>
+              <div class="pr-meta">#31 · opened 1 day ago by <a>aman.chauhan</a></div>
+            </div>
+            <div class="branch-cell">roster-hotfix <span class="branch-arrow">→</span> m…</div>
+            <div><span class="review-badge"><i class="ti ti-clock" aria-hidden="true"></i> Pending</span></div>
+            <div class="updated-cell">1 day</div>
+          </div>
+          <div class="pr-row">
+            <div class="pr-title-area">
+              <div class="pr-title-row">
+                <span class="badge-open"><i class="ti ti-git-pull-request" style="font-size:10px" aria-hidden="true"></i> Open</span>
+                <span class="pr-name">add:unload-funds</span>
+              </div>
+              <div class="pr-meta">#43 · opened 1 day ago by <a>Rohan Kumar</a></div>
+            </div>
+            <div class="branch-cell">FEN-507/unload-f… <span class="branch-arrow">→</span> m…</div>
+            <div><span class="review-badge"><i class="ti ti-clock" aria-hidden="true"></i> Pending</span></div>
+            <div class="updated-cell">1 day</div>
+          </div>
+          <div class="pr-row">
+            <div class="pr-title-area">
+              <div class="pr-title-row">
+                <span class="badge-open"><i class="ti ti-git-pull-request" style="font-size:10px" aria-hidden="true"></i> Open</span>
+                <span class="pr-name">fix : image overflow issue</span>
+              </div>
+              <div class="pr-meta">#57 · opened 1 day ago by <a>Anurag Singh Bisen</a></div>
+            </div>
+            <div class="branch-cell">feat/FEN-516 <span class="branch-arrow">→</span> m…</div>
+            <div><span class="review-badge"><i class="ti ti-clock" aria-hidden="true"></i> Pending</span></div>
+            <div class="updated-cell">1 day</div>
+          </div>
+          <div class="pr-row">
+            <div class="pr-title-area">
+              <div class="pr-title-row">
+                <span class="badge-open"><i class="ti ti-git-pull-request" style="font-size:10px" aria-hidden="true"></i> Open</span>
+                <span class="pr-name">FEN-515/credit mangement</span>
+              </div>
+              <div class="pr-meta">#45 · opened 1 day ago by <a>Rohan Kumar</a></div>
+            </div>
+            <div class="branch-cell">FEN-515/credit-m… <span class="branch-arrow">→</span> m…</div>
+            <div><span class="review-badge"><i class="ti ti-clock" aria-hidden="true"></i> Pending</span></div>
+            <div class="updated-cell">1 day</div>
+          </div>
+          <div class="pr-row">
+            <div class="pr-title-area">
+              <div class="pr-title-row">
+                <span class="badge-open"><i class="ti ti-git-pull-request" style="font-size:10px" aria-hidden="true"></i> Open</span>
+                <span class="pr-name">FEN-519/mark as failure</span>
+              </div>
+              <div class="pr-meta">#47 · opened 1 day ago by <a>Rohan Kumar</a></div>
+            </div>
+            <div class="branch-cell">FEN-519/mark-as… <span class="branch-arrow">→</span> m…</div>
+            <div><span class="review-badge"><i class="ti ti-clock" aria-hidden="true"></i> Pending</span></div>
+            <div class="updated-cell">1 day</div>
+          </div>
+          <div class="pr-row">
+            <div class="pr-title-area">
+              <div class="pr-title-row">
+                <span class="badge-open"><i class="ti ti-git-pull-request" style="font-size:10px" aria-hidden="true"></i> Open</span>
+                <span class="pr-name">[initial] : global admin template 1.0</span>
+              </div>
+              <div class="pr-meta">#58 · opened 1 day ago by <a>RISHI MOLIA</a></div>
+            </div>
+            <div class="branch-cell">initial/FEN-glob… <span class="branch-arrow">→</span> m…</div>
+            <div><span class="review-badge"><i class="ti ti-clock" aria-hidden="true"></i> Pending</span></div>
+            <div class="updated-cell">1 day</div>
+          </div>
+          <div class="pr-row">
+            <div class="pr-title-area">
+              <div class="pr-title-row">
+                <span class="badge-open"><i class="ti ti-git-pull-request" style="font-size:10px" aria-hidden="true"></i> Open</span>
+                <span class="pr-name">add: manage-ips feature</span>
+              </div>
+              <div class="pr-meta">#61 · opened 2 days ago by <a>aman.chauhan</a></div>
+            </div>
+            <div class="branch-cell">feat/manage-ips <span class="branch-arrow">→</span> m…</div>
+            <div><span class="review-badge"><i class="ti ti-clock" aria-hidden="true"></i> Pending</span></div>
+            <div class="updated-cell">2 days</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const input = document.getElementById('search-pr');
+const rows = document.querySelectorAll('.pr-row');
+input.addEventListener('input', function(){
+  const q = this.value.toLowerCase();
+  rows.forEach(r => {
+    const text = r.querySelector('.pr-name').textContent.toLowerCase();
+    r.style.display = text.includes(q) ? '' : 'none';
+  });
+});
+</script>

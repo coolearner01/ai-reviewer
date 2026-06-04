@@ -1,0 +1,303 @@
+// Prisma schema for PR Review AI.
+//
+// Model fields are camelCase and mapped (`@map`) to the existing snake_case
+// columns so the database layout is unchanged from the original raw-SQL schema.
+// Provider/status/severity columns stay as `String` (the DB keeps CHECK
+// constraints) rather than Postgres enums, to avoid altering existing columns.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String   @unique
+  name      String
+  password  String
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organizations       Organization[]
+  repositories        Repository[]
+  providerCredentials ProviderCredential[]
+  settings            UserSettings?
+  reviewPrompts       ReviewPrompt[]
+
+  @@map("users")
+}
+
+// User-managed custom review prompts. Each enabled prompt is injected into
+// every review's instructions, so the AI considers all selected prompts when
+// reviewing. Managed from Settings → Prompts (label = checkbox, content = text).
+model ReviewPrompt {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  label     String
+  content   String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("review_prompts")
+}
+
+model Organization {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                 String   @map("user_id") @db.Uuid
+  name                   String
+  slug                   String
+  provider               String
+  apiKeyEncrypted        String   @map("api_key_encrypted")
+  webhookSecretEncrypted String   @map("webhook_secret_encrypted")
+  webhookSlug            String   @map("webhook_slug")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repositories Repository[]
+  settings     OrganizationSettings?
+
+  @@unique([userId, slug])
+  @@unique([webhookSlug])
+  @@index([userId])
+  @@map("organizations")
+}
+
+model Repository {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  provider       String
+  orgOrWorkspace String   @map("org_or_workspace")
+  repoName       String   @map("repo_name")
+  repoUrl        String   @map("repo_url")
+  defaultBranch  String?  @map("default_branch")
+  language       String?
+  webhookId      String?  @map("webhook_id")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pullRequests PullRequest[]
+
+  @@unique([repoUrl])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("repositories")
+}
+
+model PullRequest {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  repositoryId   String    @map("repository_id") @db.Uuid
+  externalId     String    @map("external_id")
+  prUrl          String    @map("pr_url")
+  title          String
+  description    String    @default("")
+  author         String    @default("")
+  sourceBranch   String    @default("") @map("source_branch")
+  targetBranch   String    @default("") @map("target_branch")
+  filesChanged   Int       @default(0) @map("files_changed")
+  additions      Int       @default(0)
+  deletions      Int       @default(0)
+  state          String    @default("open")
+  reviewDecision String?   @map("review_decision")
+  closedAt       DateTime? @map("closed_at") @db.Timestamptz(6)
+  mergedAt       DateTime? @map("merged_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  repository Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  commits    PrCommit[]
+  checks     PrCheck[]
+  timeline   PrTimeline[]
+  reviews    Review[]
+
+  @@unique([prUrl])
+  @@index([repositoryId])
+  @@index([state])
+  @@map("pull_requests")
+}
+
+model PrCommit {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pullRequestId String    @map("pull_request_id") @db.Uuid
+  sha           String
+  message       String    @default("")
+  author        String    @default("")
+  committedAt   DateTime? @map("committed_at") @db.Timestamptz(6)
+  position      Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  pullRequest PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([pullRequestId, sha])
+  @@index([pullRequestId, position])
+  @@map("pr_commits")
+}
+
+model PrCheck {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pullRequestId String   @map("pull_request_id") @db.Uuid
+  name          String
+  status        String   @default("completed")
+  conclusion    String?
+  detailsUrl    String?  @map("details_url")
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  pullRequest PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([pullRequestId, name])
+  @@index([pullRequestId])
+  @@map("pr_checks")
+}
+
+model PrTimeline {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pullRequestId String   @map("pull_request_id") @db.Uuid
+  eventType     String   @map("event_type")
+  actor         String   @default("")
+  payload       Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  pullRequest PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+
+  @@index([pullRequestId, createdAt(sort: Desc)])
+  @@index([eventType])
+  @@map("pr_timeline")
+}
+
+model Review {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pullRequestId         String    @map("pull_request_id") @db.Uuid
+  status                String
+  reviewDepth           String    @map("review_depth")
+  customPrompt          String?   @map("custom_prompt")
+  riskScore             Int?      @map("risk_score")
+  mergeRecommendation   String?   @map("merge_recommendation")
+  regressionProbability Decimal?  @map("regression_probability") @db.Decimal(3, 2)
+  executiveSummary      String?   @map("executive_summary")
+  technicalSummary      String?   @map("technical_summary")
+  deploymentRisk        String?   @map("deployment_risk")
+  durationMs            Int?      @map("duration_ms")
+  errorMessage          String?   @map("error_message")
+  diffCached            String?   @map("diff_cached")
+  topPriorityFixes      Json      @default("[]") @map("top_priority_fixes")
+  changedFilesAnalysis  Json      @default("[]") @map("changed_files_analysis")
+  health                String?
+  postedToProviderAt    DateTime? @map("posted_to_provider_at") @db.Timestamptz(6)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt           DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  pullRequest PullRequest     @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+  comments    ReviewComment[]
+
+  @@index([pullRequestId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("reviews")
+}
+
+model ReviewComment {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId         String    @map("review_id") @db.Uuid
+  agentType        String    @map("agent_type")
+  category         String?
+  severity         String
+  confidence       Decimal   @db.Decimal(3, 2)
+  file             String
+  line             Int
+  endLine          Int?      @map("end_line")
+  side             String    @default("RIGHT")
+  title            String
+  issue            String
+  impact           String
+  recommendation   String
+  suggestedFix     String?   @map("suggested_fix")
+  postedToProvider Boolean   @default(false) @map("posted_to_provider")
+  discardedAt      DateTime? @map("discarded_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@index([reviewId, file])
+  @@map("review_comments")
+}
+
+model ProviderCredential {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  provider     String
+  accessToken  String    @map("access_token")
+  refreshToken String?   @map("refresh_token")
+  expiresAt    DateTime? @map("expires_at") @db.Timestamptz(6)
+  scopes       String[]
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("provider_credentials")
+}
+
+model OrganizationSettings {
+  organizationId     String   @id @map("organization_id") @db.Uuid
+  customInstructions String   @default("") @map("custom_instructions")
+  securityPolicies   String   @default("") @map("security_policies")
+  architectureRules  String   @default("") @map("architecture_rules")
+  codingGuidelines   String   @default("") @map("coding_guidelines")
+  defaultReviewDepth String   @default("standard") @map("default_review_depth")
+  defaultFocusAreas  String[] @default([]) @map("default_focus_areas")
+  ignoredPaths       String[] @default([]) @map("ignored_paths")
+  // AI provider configuration. `aiProvider` selects the active provider
+  // ('anthropic' | 'gemini' | 'openai' | 'openrouter'); empty = inherit/env.
+  // API keys are stored encrypted (tokenCrypto, AES-256-GCM). Models are
+  // stored per-provider so switching provider switches model automatically.
+  aiProvider         String   @default("") @map("ai_provider")
+  anthropicApiKey    String   @default("") @map("anthropic_api_key")
+  geminiApiKey       String   @default("") @map("gemini_api_key")
+  openaiApiKey       String   @default("") @map("openai_api_key")
+  openrouterApiKey   String   @default("") @map("openrouter_api_key")
+  anthropicModel     String   @default("") @map("anthropic_model")
+  geminiModel        String   @default("") @map("gemini_model")
+  openaiModel        String   @default("") @map("openai_model")
+  openrouterModel    String   @default("") @map("openrouter_model")
+  updatedAt          DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_settings")
+}
+
+model UserSettings {
+  userId             String   @id @map("user_id") @db.Uuid
+  defaultReviewDepth String   @default("standard") @map("default_review_depth")
+  defaultFocusAreas  String[] @default([]) @map("default_focus_areas")
+  ignoredPaths       String[] @default([]) @map("ignored_paths")
+  customInstructions String   @default("") @map("custom_instructions")
+  securityPolicies   String   @default("") @map("security_policies")
+  architectureRules  String   @default("") @map("architecture_rules")
+  codingGuidelines   String   @default("") @map("coding_guidelines")
+  // Per-user AI provider configuration. Overrides the org-level config at
+  // review time. See OrganizationSettings above for field semantics.
+  aiProvider         String   @default("") @map("ai_provider")
+  anthropicApiKey    String   @default("") @map("anthropic_api_key")
+  geminiApiKey       String   @default("") @map("gemini_api_key")
+  openaiApiKey       String   @default("") @map("openai_api_key")
+  openrouterApiKey   String   @default("") @map("openrouter_api_key")
+  anthropicModel     String   @default("") @map("anthropic_model")
+  geminiModel        String   @default("") @map("gemini_model")
+  openaiModel        String   @default("") @map("openai_model")
+  openrouterModel    String   @default("") @map("openrouter_model")
+  updatedAt          DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
