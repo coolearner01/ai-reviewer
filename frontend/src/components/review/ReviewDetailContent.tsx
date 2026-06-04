@@ -2,9 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useReviewView } from '@/lib/hooks/useReviewView';
+import { useCancelReview, useDeleteReview } from '@/lib/hooks/useReview';
 import { PageHeader, ErrorCard } from '@/components/shared/PageHeader';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { ReviewProgress } from '@/components/review/ReviewProgress';
 import { MergeRecommendationBanner } from '@/components/review/MergeRecommendationBanner';
 import { AgentResultsPanel, FileRiskTable } from '@/components/review/AgentResultsPanel';
@@ -14,7 +17,7 @@ import { PostToGitHubButton } from '@/components/review/PostToGitHubButton';
 import { PrSectionNav, type SectionNavItem } from '@/components/review/PrSectionNav';
 import { BackToTop } from '@/components/review/BackToTop';
 import { Button } from '@/components/ui/button';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Trash2, XCircle } from 'lucide-react';
 import type { ReviewCommentRecord, ReviewResult, Severity } from '@/types';
 
 export function ReviewDetailContent({
@@ -41,6 +44,53 @@ export function ReviewDetailContent({
     severityCounts,
   } = useReviewView(data, refetch);
   const findingsPanelRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const cancelReview = useCancelReview();
+  const deleteReview = useDeleteReview();
+  const [confirm, setConfirm] = useState<'cancel' | 'delete' | null>(null);
+
+  const handleCancel = () => {
+    cancelReview.mutate(review.id, {
+      onSuccess: () => {
+        setConfirm(null);
+        refetch();
+      },
+    });
+  };
+
+  const handleDelete = () => {
+    deleteReview.mutate(review.id, { onSuccess: () => router.push('/ai-reviews') });
+  };
+
+  const confirmDialog = (
+    <>
+      {confirm === 'cancel' && (
+        <ConfirmDialog
+          title="Cancel review?"
+          description="This stops the review before it finishes. You can re-run it later."
+          confirmLabel="Cancel review"
+          pendingLabel="Cancelling…"
+          cancelLabel="Keep running"
+          tone="danger"
+          pending={cancelReview.isPending}
+          onConfirm={handleCancel}
+          onClose={() => !cancelReview.isPending && setConfirm(null)}
+        />
+      )}
+      {confirm === 'delete' && (
+        <ConfirmDialog
+          title="Delete review?"
+          description="This permanently removes the review and all of its findings from the database. This cannot be undone."
+          confirmLabel="Delete review"
+          pendingLabel="Deleting…"
+          tone="danger"
+          pending={deleteReview.isPending}
+          onConfirm={handleDelete}
+          onClose={() => !deleteReview.isPending && setConfirm(null)}
+        />
+      )}
+    </>
+  );
 
   // Shared file-selection state. Clicking a file in any of the panels below
   // filters the Agent Findings, switches the diff browser to that file, and
@@ -103,6 +153,48 @@ export function ReviewDetailContent({
           prUrl={pullRequest.prUrl}
           latest={displayLatest}
         />
+        <div className="mt-4 flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setConfirm('cancel')}
+            disabled={cancelReview.isPending}
+          >
+            <XCircle className="h-3.5 w-3.5" />
+            Cancel review
+          </Button>
+        </div>
+        {confirmDialog}
+      </div>
+    );
+  }
+
+  if (review.status === 'cancelled') {
+    return (
+      <div className={hidePageHeader ? 'space-y-4' : 'px-6 py-8 max-w-xl mx-auto space-y-4'}>
+        {!hideBreadcrumb && breadcrumb}
+        <div className="rounded-md border border-gh-border bg-gh-surface p-6 text-sm">
+          <p className="font-semibold text-gh-text mb-1">Review cancelled</p>
+          <p className="text-gh-text-muted">
+            This review was cancelled before it finished. You can run it again or delete it.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Refresh
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-gh-red hover:text-gh-red"
+              onClick={() => setConfirm('delete')}
+              disabled={deleteReview.isPending}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete review
+            </Button>
+          </div>
+        </div>
+        {confirmDialog}
       </div>
     );
   }
@@ -184,6 +276,17 @@ export function ReviewDetailContent({
                   <ExternalLink className="h-3.5 w-3.5" />
                   View on {repository.provider}
                 </a>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-gh-red hover:text-gh-red"
+                onClick={() => setConfirm('delete')}
+                disabled={deleteReview.isPending}
+                title="Delete review"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
               </Button>
             </div>
           }
@@ -282,6 +385,7 @@ export function ReviewDetailContent({
       )}
 
       <BackToTop />
+      {confirmDialog}
     </div>
   );
 }

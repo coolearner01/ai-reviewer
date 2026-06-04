@@ -8,7 +8,8 @@ export type ReviewStatus =
   | 'analyzing'
   | 'commenting'
   | 'completed'
-  | 'failed';
+  | 'failed'
+  | 'cancelled';
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export type AgentType =
   | 'security'

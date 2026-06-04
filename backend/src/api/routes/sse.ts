@@ -50,7 +50,7 @@ router.get(
       if (current) {
         writeEvent(res, toProgressEvent(current));
 
-        if (current.status === 'completed' || current.status === 'failed') {
+        if (isTerminal(current.status)) {
           res.end();
           return;
         }
@@ -75,7 +75,7 @@ router.get(
           return;
         }
         writeEvent(res, event);
-        if (event.status === 'completed' || event.status === 'failed') {
+        if (isTerminal(event.status)) {
           unsubscribe();
           res.end();
         }
@@ -116,6 +116,10 @@ router.get(
     }
   },
 );
+
+function isTerminal(status: ReviewStatus): boolean {
+  return status === 'completed' || status === 'failed' || status === 'cancelled';
+}
 
 function writeEvent(res: Response, event: ReviewProgressEvent): void {
   if (res.writableEnded) return;
@@ -161,6 +165,7 @@ function progressForStatus(status: ReviewStatus): number {
       return 85;
     case 'completed':
     case 'failed':
+    case 'cancelled':
       return 100;
     default:
       return 0;
@@ -181,6 +186,8 @@ function messageForStatus(status: ReviewStatus, errorMessage: string | null): st
       return 'Review complete';
     case 'failed':
       return errorMessage ?? 'Review failed';
+    case 'cancelled':
+      return 'Review cancelled';
     default:
       return 'Processing…';
   }

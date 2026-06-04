@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Bot, Plus, RefreshCw } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Bot, Plus, RefreshCw, Trash2, XCircle } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { PageHeader, EmptyState, Spinner, ErrorCard } from '@/components/shared/PageHeader';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TopBarActions } from '@/components/layout/TopBarActions';
@@ -44,6 +45,27 @@ export default function AiReviewsPage() {
     mutationFn: (id: string) => reviewsApi.retry(id),
     onSuccess: () => {
       toast.success('Review re-queued');
+      void qc.invalidateQueries({ queryKey: ['reviews'] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const cancel = useMutation({
+    mutationFn: (id: string) => reviewsApi.cancel(id),
+    onSuccess: () => {
+      toast.success('Review cancelled');
+      void qc.invalidateQueries({ queryKey: ['reviews'] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+
+  const remove = useMutation({
+    mutationFn: (id: string) => reviewsApi.remove(id),
+    onSuccess: () => {
+      toast.success('Review deleted');
+      setPendingDelete(null);
       void qc.invalidateQueries({ queryKey: ['reviews'] });
     },
     onError: (err: Error) => toast.error(err.message),
@@ -134,22 +156,49 @@ export default function AiReviewsPage() {
               reviews={filtered}
               onRetry={(id) => retry.mutate(id)}
               retrying={retry.isPending ? retry.variables ?? null : null}
+              onCancel={(id) => cancel.mutate(id)}
+              cancelling={cancel.isPending ? cancel.variables ?? null : null}
+              onDelete={(id) => setPendingDelete(id)}
+              deleting={remove.isPending ? remove.variables ?? null : null}
             />
           </Card>
         </div>
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete review?"
+          description="This permanently removes the review and all of its findings from the database. This cannot be undone."
+          confirmLabel="Delete review"
+          pendingLabel="Deleting…"
+          tone="danger"
+          pending={remove.isPending}
+          onConfirm={() => remove.mutate(pendingDelete)}
+          onClose={() => !remove.isPending && setPendingDelete(null)}
+        />
       )}
     </div>
   );
 }
 
+const ACTIVE_STATUSES: ReviewStatus[] = ['queued', 'fetching', 'analyzing', 'commenting'];
+
 function ReviewHistoryTable({
   reviews,
   onRetry,
   retrying,
+  onCancel,
+  cancelling,
+  onDelete,
+  deleting,
 }: {
   reviews: ReviewItem[];
   onRetry: (id: string) => void;
   retrying: string | null;
+  onCancel: (id: string) => void;
+  cancelling: string | null;
+  onDelete: (id: string) => void;
+  deleting: string | null;
 }) {
   if (reviews.length === 0) {
     return (
@@ -228,18 +277,42 @@ function ReviewHistoryTable({
               <td className="px-4 py-3 text-gh-text-subtle text-xs">
                 {formatRelative(review.createdAt)}
               </td>
-              <td className="px-4 py-3 text-right">
-                {review.status === 'failed' && (
+              <td className="px-4 py-3">
+                <div className="flex items-center justify-end gap-2">
+                  {ACTIVE_STATUSES.includes(review.status) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onCancel(review.id)}
+                      disabled={cancelling === review.id}
+                    >
+                      <XCircle className="h-3 w-3" />
+                      {cancelling === review.id ? 'Cancelling…' : 'Cancel'}
+                    </Button>
+                  )}
+                  {(review.status === 'failed' || review.status === 'cancelled') && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onRetry(review.id)}
+                      disabled={retrying === review.id}
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      {retrying === review.id ? 'Retrying…' : 'Retry'}
+                    </Button>
+                  )}
                   <Button
                     size="sm"
-                    variant="outline"
-                    onClick={() => onRetry(review.id)}
-                    disabled={retrying === review.id}
+                    variant="ghost"
+                    className="text-gh-red hover:text-gh-red"
+                    onClick={() => onDelete(review.id)}
+                    disabled={deleting === review.id}
+                    title="Delete review"
                   >
-                    <RefreshCw className="h-3 w-3" />
-                    {retrying === review.id ? 'Retrying…' : 'Retry'}
+                    <Trash2 className="h-3 w-3" />
+                    {deleting === review.id ? 'Deleting…' : 'Delete'}
                   </Button>
-                )}
+                </div>
               </td>
             </tr>
           ))}

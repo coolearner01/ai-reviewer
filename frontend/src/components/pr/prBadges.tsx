@@ -31,6 +31,8 @@ export function reviewBadgeMeta(
     return { cls: 'gh-review-badge gh-review-badge--pending', icon: Clock, label: 'Pending' };
   if (status === 'failed')
     return { cls: 'gh-review-badge gh-review-badge--changes', icon: AlertCircle, label: 'Failed' };
+  if (status === 'cancelled')
+    return { cls: 'gh-review-badge gh-review-badge--none', icon: X, label: 'Cancelled' };
   if (merge === 'BLOCK_MERGE' || merge === 'NEEDS_CHANGES')
     return { cls: 'gh-review-badge gh-review-badge--changes', icon: AlertCircle, label: 'Changes' };
   if (merge === 'APPROVE' || merge === 'APPROVE_WITH_MINOR_SUGGESTIONS')

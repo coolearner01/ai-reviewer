@@ -18,6 +18,7 @@ export function progressPercent(status: ReviewStatus): number {
       return 85;
     case 'completed':
     case 'failed':
+    case 'cancelled':
       return 100;
     default:
       return 0;
@@ -38,6 +39,8 @@ export function progressMessage(review: ReviewRecord): string {
       return 'Review complete';
     case 'failed':
       return review.errorMessage ?? 'Review failed';
+    case 'cancelled':
+      return 'Review cancelled';
     default:
       return 'Processing…';
   }

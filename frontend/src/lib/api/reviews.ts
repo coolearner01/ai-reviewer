@@ -46,6 +46,18 @@ export const reviewsApi = {
       method: 'POST',
     }),
 
+  /** Cancel an in-progress review (queued / fetching / analyzing / commenting). */
+  cancel: (id: string) =>
+    apiFetch<{ reviewId: string; status: string }>(`/reviews/${id}/cancel`, {
+      method: 'POST',
+    }),
+
+  /** Permanently delete a review (and its findings) from the database. */
+  remove: (id: string) =>
+    apiFetch<void>(`/reviews/${id}`, {
+      method: 'DELETE',
+    }),
+
   /** Manually push this review's findings + summary to the upstream provider. */
   postToProvider: (id: string) =>
     apiFetch<PostToProviderResponse>(`/reviews/${id}/post-to-github`, {

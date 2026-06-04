@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../infrastructure/database/client';
 import { reviewEventBus } from '../../infrastructure/events/eventBus';
+import { AppError } from '../../errors/AppError';
 import { assertOwnershipBy } from '../shared/ownership';
 import type {
   ChangedFileAnalysis,
@@ -59,14 +60,23 @@ const reviewCoreService = {
     durationMs?: number;
   }): Promise<void> {
     const { reviewId, status, message, progress, errorMessage, durationMs } = input;
-    const completedAt = status === 'completed' || status === 'failed' ? new Date() : null;
+    const completedAt =
+      status === 'completed' || status === 'failed' || status === 'cancelled' ? new Date() : null;
 
     const data: Prisma.ReviewUpdateManyMutationInput = { status };
     if (errorMessage !== undefined && errorMessage !== null) data.errorMessage = errorMessage;
     if (durationMs !== undefined && durationMs !== null) data.durationMs = durationMs;
     if (completedAt !== null) data.completedAt = completedAt;
 
-    await prisma.review.updateMany({ where: { id: reviewId }, data });
+    // Once a review is cancelled it is terminal: a still-running background job
+    // must not be able to flip it back to analyzing/completed/failed. The
+    // `NOT status = cancelled` guard makes every later write from that job a
+    // no-op, so the user's cancel "sticks".
+    const updated = await prisma.review.updateMany({
+      where: { id: reviewId, NOT: { status: 'cancelled' } },
+      data,
+    });
+    if (updated.count === 0) return;
 
     const event: ReviewProgressEvent = {
       reviewId,
@@ -76,6 +86,48 @@ const reviewCoreService = {
       timestamp: new Date().toISOString(),
     };
     reviewEventBus.publish(reviewId, event);
+  },
+
+  /** True when the review is in a terminal state and no longer running. */
+  async isCancelled(reviewId: string): Promise<boolean> {
+    const row = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { status: true },
+    });
+    return row?.status === 'cancelled';
+  },
+
+  /**
+   * Cancel an in-flight review (queued / fetching / analyzing / commenting).
+   * Marks it terminal so the in-process job's later status writes become
+   * no-ops (see `updateStatus`). Completed/failed/cancelled reviews can't be
+   * cancelled — delete them instead.
+   */
+  async cancelReview(reviewId: string): Promise<void> {
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { status: true },
+    });
+    if (!review) throw AppError.notFound('Review not found');
+    if (
+      review.status === 'completed' ||
+      review.status === 'failed' ||
+      review.status === 'cancelled'
+    ) {
+      throw AppError.badRequest('Review is already finished');
+    }
+    await reviewService.updateStatus({
+      reviewId,
+      status: 'cancelled',
+      message: 'Review cancelled by user',
+      progress: 100,
+      errorMessage: 'Cancelled by user',
+    });
+  },
+
+  /** Permanently delete a review and its comments (cascade) from the database. */
+  async deleteReview(reviewId: string): Promise<void> {
+    await prisma.review.delete({ where: { id: reviewId } });
   },
 
   async finalize(input: {

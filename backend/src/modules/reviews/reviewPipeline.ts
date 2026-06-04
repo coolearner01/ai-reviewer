@@ -29,10 +29,23 @@ export function registerReviewPipeline(): void {
       return;
     }
 
+    // The in-process queue can't abort a running handler, so we cooperatively
+    // bail out between steps if the user cancelled the review meanwhile.
+    const bailIfCancelled = async (): Promise<boolean> => {
+      if (await reviewService.isCancelled(reviewId)) {
+        logger.info('[pipeline] review cancelled — stopping', { reviewId });
+        return true;
+      }
+      return false;
+    };
+
     try {
       aiHealth.reset();
+      if (await bailIfCancelled()) return;
       const fetched = await step1Fetch(state);
+      if (await bailIfCancelled()) return;
       const orchestrated = await step2Analyze(state, fetched);
+      if (await bailIfCancelled()) return;
       await step3Comment(
         state,
         orchestrated.findings,
@@ -40,6 +53,7 @@ export function registerReviewPipeline(): void {
         orchestrated.mergeRecommendation,
         orchestrated.holistic,
       );
+      if (await bailIfCancelled()) return;
       await step5Complete(state);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

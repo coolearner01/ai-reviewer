@@ -30,7 +30,11 @@ export function useReviewProgress(reviewId: string, enabled = true) {
     const ctrl = new AbortController();
 
     const markTerminal = (event: ReviewProgressEvent) => {
-      if (event.status === 'completed' || event.status === 'failed') {
+      if (
+        event.status === 'completed' ||
+        event.status === 'failed' ||
+        event.status === 'cancelled'
+      ) {
         terminalRef.current = true;
         setIsComplete(true);
         ctrl.abort();

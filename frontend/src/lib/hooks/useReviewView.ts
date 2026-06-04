@@ -7,7 +7,10 @@ import type { ReviewCommentRecord, ReviewResult, Severity } from '@/types';
 
 export function useReviewView(data: ReviewResult, refetch: () => void) {
   const { review, comments } = data;
-  const inProgress = review.status !== 'completed' && review.status !== 'failed';
+  const inProgress =
+    review.status !== 'completed' &&
+    review.status !== 'failed' &&
+    review.status !== 'cancelled';
   const { latest, isComplete, error: progressError } = useReviewProgress(review.id, inProgress);
 
   useEffect(() => {

@@ -108,6 +108,26 @@ router.post(
 );
 
 router.post(
+  '/:id/cancel',
+  validateParams(idParamSchema),
+  asyncHandler(async (req, res) => {
+    await reviewService.assertOwned(req.params.id, req.user!.id);
+    await reviewService.cancelReview(req.params.id);
+    res.json({ reviewId: req.params.id, status: 'cancelled' });
+  }),
+);
+
+router.delete(
+  '/:id',
+  validateParams(idParamSchema),
+  asyncHandler(async (req, res) => {
+    await reviewService.assertOwned(req.params.id, req.user!.id);
+    await reviewService.deleteReview(req.params.id);
+    res.status(204).end();
+  }),
+);
+
+router.post(
   '/:id/post-to-github',
   validateParams(idParamSchema),
   asyncHandler(async (req, res) => {

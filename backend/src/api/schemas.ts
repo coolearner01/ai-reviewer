@@ -24,6 +24,7 @@ export const reviewStatusSchema = z.enum([
   'commenting',
   'completed',
   'failed',
+  'cancelled',
 ]);
 
 /** Array of user-selectable specialist agents. */
